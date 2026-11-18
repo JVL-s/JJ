@@ -1,0 +1,1224 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>[제작]</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts: Pretendard & Noto Sans KR & JetBrains Mono -->
+  <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Noto+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Pretendard', 'Noto Sans KR', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            ivory: {
+              50: '#FAF9F6',
+              100: '#F6F5F0',
+              200: '#EFECE6',
+              300: '#E6E4DD',
+            },
+            ink: {
+              900: '#1A1918',
+              800: '#242320',
+              600: '#4A4843',
+              500: '#6E6C65',
+              400: '#9A978E',
+            }
+          },
+          boxShadow: {
+            'soft': '0 2px 10px rgba(26, 25, 24, 0.035)',
+            'card': '0 1px 3px rgba(26, 25, 24, 0.04), 0 4px 12px rgba(26, 25, 24, 0.02)',
+          }
+        }
+      }
+    };
+  </script>
+
+  <style>
+    /* 커스텀 스크롤바 - 아이보리 미니멀 톤 */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(154, 151, 142, 0.35);
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(110, 108, 101, 0.55);
+    }
+
+    /* 드래그 앤 드롭 시각 피드백 */
+    .dragging-item {
+      opacity: 0.45;
+      transform: scale(0.99);
+    }
+    .drag-over-top {
+      border-top: 2px solid #1A1918 !important;
+    }
+    .drag-over-card {
+      box-shadow: 0 -3px 0 0 #1A1918, 0 4px 12px rgba(0,0,0,0.05) !important;
+    }
+
+    /* 텍스트 영역 자동 높이 조절 */
+    textarea {
+      field-sizing: content;
+      min-height: 96px;
+    }
+
+    /* 토스트 애니메이션 */
+    @keyframes slideUpFade {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .toast-enter {
+      animation: slideUpFade 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+  </style>
+</head>
+<body class="bg-ivory-50 text-ink-900 font-sans antialiased selection:bg-ink-800 selection:text-white flex flex-col min-h-screen lg:h-screen lg:overflow-hidden">
+
+  <!-- 상단 헤더 바 -->
+  <header class="bg-white border-b border-ivory-300 px-5 py-3 flex flex-wrap items-center justify-between gap-3 shrink-0 z-20">
+    <!-- 좌측 타이틀: 깔끔하게 [제작] 표기 -->
+    <div class="flex items-center gap-3">
+      <div class="w-8 h-8 rounded-lg bg-ink-800 text-ivory-50 flex items-center justify-center shadow-xs">
+        <i data-lucide="feather" class="w-4 h-4"></i>
+      </div>
+      <div class="flex items-center gap-2.5">
+        <h1 class="font-bold text-lg tracking-tight text-ink-900">[제작]</h1>
+        <span id="saveStatusBadge" class="inline-flex items-center gap-1.5 text-[11px] font-medium px-2.5 py-0.5 rounded-full bg-ivory-100 text-ink-500 border border-ivory-300">
+          <span class="w-1.5 h-1.5 rounded-full bg-emerald-600"></span>
+          자동 저장됨
+        </span>
+      </div>
+    </div>
+
+    <!-- 우측 글로벌 툴바 -->
+    <div class="flex flex-wrap items-center gap-2">
+      <!-- 전체 데이터 백업 (JSON) -->
+      <button onclick="exportAllJSON()" title="모든 시트를 JSON 파일로 백업" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-ivory-300 bg-ivory-50 hover:bg-ivory-200/70 text-ink-600 transition">
+        <i data-lucide="download-cloud" class="w-3.5 h-3.5 text-ink-500"></i>
+        <span class="hidden sm:inline">전체 백업</span>
+      </button>
+
+      <!-- 백업 복원 (JSON) -->
+      <label title="JSON 백업 파일 불러오기" class="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-ivory-300 bg-ivory-50 hover:bg-ivory-200/70 text-ink-600 transition">
+        <i data-lucide="upload-cloud" class="w-3.5 h-3.5 text-ink-500"></i>
+        <span class="hidden sm:inline">백업 복원</span>
+        <input type="file" id="importJsonInput" accept=".json" class="hidden" onchange="importAllJSON(event)" />
+      </label>
+
+      <div class="h-4 w-px bg-ivory-300 mx-0.5 hidden sm:block"></div>
+
+      <!-- 전체 복사 -->
+      <button onclick="copyCompiledPrompt()" class="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-medium rounded-lg border border-ivory-300 bg-white hover:bg-ivory-100 text-ink-900 transition shadow-2xs">
+        <i data-lucide="copy" class="w-3.5 h-3.5 text-ink-500"></i>
+        <span>전체 복사</span>
+      </button>
+
+      <!-- TXT 메모장 다운로드 -->
+      <button onclick="downloadTxtFile()" class="inline-flex items-center gap-1.5 px-4 py-1.5 text-xs font-semibold rounded-lg bg-ink-800 hover:bg-ink-900 text-white transition shadow-xs">
+        <i data-lucide="file-text" class="w-3.5 h-3.5"></i>
+        <span>TXT 메모장 다운로드</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- 멀티 게시글 / 시트 탭 바 -->
+  <div class="bg-ivory-100/80 border-b border-ivory-300 px-5 py-2 flex items-center gap-2 overflow-x-auto shrink-0">
+    <div class="flex items-center gap-1.5 text-xs font-medium text-ink-500 shrink-0 mr-1">
+      <i data-lucide="layers" class="w-3.5 h-3.5"></i>
+      <span>저장 목록</span>
+    </div>
+
+    <!-- 동적 시트 탭 목록 -->
+    <div id="projectTabsContainer" class="flex items-center gap-1.5"></div>
+
+    <!-- 새 시트 추가 버튼 -->
+    <button onclick="createNewProject()" class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium bg-white hover:bg-ivory-200/70 text-ink-800 border border-dashed border-ivory-300 hover:border-ink-400 shrink-0 transition">
+      <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+      <span>새 시트</span>
+    </button>
+  </div>
+
+  <!-- 메인 2분할 작업 영역 (좌 50% / 우 50%) -->
+  <main class="flex-1 grid grid-cols-1 lg:grid-cols-12 overflow-hidden">
+
+    <!-- ========================================== -->
+    <!-- 왼쪽 패널: 항목 체크리스트 & 순서 변경 & 입력 카드 -->
+    <!-- ========================================== -->
+    <section class="lg:col-span-6 flex flex-col border-b lg:border-b-0 lg:border-r border-ivory-300 bg-ivory-50 overflow-y-auto">
+      
+      <!-- 현재 시트 제목 편집 및 관리 바 -->
+      <div class="px-5 py-3.5 border-b border-ivory-300 bg-white flex flex-wrap items-center justify-between gap-2 sticky top-0 z-10">
+        <div class="flex items-center gap-2 flex-1 min-w-[200px]">
+          <span class="text-xs font-semibold px-2 py-0.5 rounded bg-ivory-200 text-ink-600 shrink-0">제목</span>
+          <input
+            type="text"
+            id="activeProjectTitleInput"
+            onchange="renameActiveProject(this.value)"
+            onkeyup="if(event.key==='Enter') this.blur()"
+            placeholder="시트 제목을 입력하세요..."
+            class="w-full bg-transparent font-bold text-base text-ink-900 placeholder-ink-400 focus:outline-none focus:bg-ivory-50 focus:ring-2 focus:ring-ink-800/15 rounded-lg px-2 py-1 transition"
+          />
+        </div>
+        <div class="flex items-center gap-1.5">
+          <button onclick="duplicateActiveProject()" title="현재 시트 복제" class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium text-ink-600 bg-ivory-100 hover:bg-ivory-200 transition">
+            <i data-lucide="copy-plus" class="w-3.5 h-3.5"></i>
+            <span>복제</span>
+          </button>
+          <button onclick="openDeleteProjectModal()" title="현재 시트 삭제" class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium text-rose-600 bg-rose-50 hover:bg-rose-100 transition">
+            <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+            <span>삭제</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="p-5 space-y-6">
+        <!-- 1. 항목 선택 및 순서 배치 카드 -->
+        <div class="bg-white rounded-2xl border border-ivory-300 shadow-card overflow-hidden">
+          <div class="px-4 py-3 bg-ivory-100/60 border-b border-ivory-300 flex items-center justify-between gap-2">
+            <div class="flex items-center gap-2">
+              <span class="w-5 h-5 rounded-md bg-ink-800 text-white text-[11px] font-bold flex items-center justify-center">1</span>
+              <h2 class="font-semibold text-sm text-ink-900">항목 선택 및 순서 배치</h2>
+              <span id="checkedCountBadge" class="text-[11px] px-2 py-0.5 rounded-full bg-ivory-200 text-ink-600 font-medium">0개 선택</span>
+            </div>
+            <button onclick="toggleChecklistCollapse()" id="collapseChecklistBtn" class="text-xs font-medium text-ink-500 hover:text-ink-900 inline-flex items-center gap-1 transition">
+              <span id="collapseChecklistText">접기</span>
+              <i data-lucide="chevron-up" id="collapseChecklistIcon" class="w-4 h-4 transition-transform"></i>
+            </button>
+          </div>
+
+          <div id="checklistBody" class="p-4 space-y-3.5">
+            <!-- 새 커스텀 항목 추가 입력폼 -->
+            <form onsubmit="handleAddCustomField(event)" class="flex gap-2">
+              <input
+                type="text"
+                id="newFieldNameInput"
+                placeholder="새 항목 이름 입력 (예: 비밀 설정, 트라우마, 금지 규칙...)"
+                class="flex-1 text-sm rounded-xl border border-ivory-300 bg-ivory-50 px-3.5 py-2 text-ink-900 placeholder-ink-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-ink-800/15 focus:border-ink-800 transition"
+              />
+              <button type="submit" class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold bg-ink-800 hover:bg-ink-900 text-white shrink-0 transition shadow-2xs">
+                <i data-lucide="plus" class="w-4 h-4"></i>
+                <span>항목 추가</span>
+              </button>
+            </form>
+
+            <p class="text-[11px] text-ink-500 flex items-center gap-1.5">
+              <i data-lucide="arrow-up-down" class="w-3.5 h-3.5 text-ink-400 shrink-0"></i>
+              <span>항목을 체크하면 아래 2번 영역에 입력창이 나타납니다. 1번과 2번 모두 드래그나 화살표로 순서를 바꿀 수 있습니다.</span>
+            </p>
+
+            <!-- 항목 체크리스트 (드래그 앤 드롭 정렬 가능) -->
+            <div id="fieldChecklistContainer" class="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-0.5"></div>
+          </div>
+        </div>
+
+        <!-- 2. 선택된 항목 내용 입력 및 순서 조정 영역 -->
+        <div class="space-y-3">
+          <div class="flex items-center justify-between px-1">
+            <div class="flex items-center gap-2">
+              <span class="w-5 h-5 rounded-md bg-ink-800 text-white text-[11px] font-bold flex items-center justify-center">2</span>
+              <h2 class="font-semibold text-sm text-ink-900">선택 항목 내용 입력</h2>
+            </div>
+            <span class="text-xs text-ink-500">드래그(⋮⋮) 또는 화살표로 순서 변경 가능</span>
+          </div>
+
+          <!-- 활성화된 입력 카드 리스트 (드래그 앤 드롭 & 화살표 순서 변경 지원) -->
+          <div id="activeEditorsContainer" class="space-y-3 pb-10"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- 오른쪽 패널: 실시간 통합 미리보기 & 메모장 내보내기 -->
+    <!-- ========================================== -->
+    <section class="lg:col-span-6 flex flex-col bg-white overflow-hidden h-[620px] lg:h-auto">
+      
+      <!-- 미리보기 헤더 & 포맷 선택기 -->
+      <div class="px-5 py-3.5 border-b border-ivory-300 flex flex-wrap items-center justify-between gap-2 bg-white shrink-0">
+        <div class="flex items-center gap-2">
+          <i data-lucide="file-output" class="w-4 h-4 text-ink-800"></i>
+          <h2 class="font-semibold text-sm text-ink-900">실시간 프롬프트 미리보기</h2>
+        </div>
+
+        <!-- 출력 포맷 선택 드롭다운 -->
+        <div class="flex items-center gap-2">
+          <label for="outputFormatSelect" class="text-xs text-ink-500">출력 형식</label>
+          <select id="outputFormatSelect" onchange="changeOutputFormat(this.value)" class="text-xs font-medium rounded-lg border border-ivory-300 bg-ivory-50 text-ink-900 px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-ink-800/15 cursor-pointer">
+            <option value="bracket">[항목명] 대괄호형</option>
+            <option value="markdown">### 마크다운형</option>
+            <option value="xml">&lt;태그&gt; XML 구조형</option>
+            <option value="colon">항목명: 콜론형</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- 실시간 통계 바 (글자 수 & 예상 토큰 수) -->
+      <div class="px-5 py-2.5 bg-ivory-100/70 border-b border-ivory-300 flex flex-wrap items-center justify-between gap-2 text-xs shrink-0">
+        <div class="flex items-center gap-3 text-ink-500">
+          <span>공백 포함 <strong id="charCountWithSpace" class="text-ink-900 font-mono font-semibold">0</strong>자</span>
+          <span class="text-ivory-300">|</span>
+          <span>공백 제외 <strong id="charCountNoSpace" class="text-ink-900 font-mono font-semibold">0</strong>자</span>
+        </div>
+        <div class="flex items-center gap-1.5 text-ink-800 font-medium" title="한글/영문 혼합 기준 AI 모델 예상 토큰 수">
+          <i data-lucide="cpu" class="w-3.5 h-3.5 text-ink-500"></i>
+          <span>예상 토큰 <strong id="estimatedTokens" class="font-mono font-semibold">0</strong> tokens</span>
+        </div>
+      </div>
+
+      <!-- 미리보기 본문 문서 영역 -->
+      <div class="flex-1 p-5 overflow-y-auto bg-ivory-50/50">
+        <div class="h-full flex flex-col">
+          <pre id="previewOutputBox" class="flex-1 w-full rounded-2xl border border-ivory-300 bg-white p-5 font-mono text-xs sm:text-[13px] leading-relaxed text-ink-900 whitespace-pre-wrap break-words overflow-y-auto shadow-soft select-all"></pre>
+        </div>
+      </div>
+
+      <!-- 하단 빠른 내보내기 액션 바 -->
+      <div class="px-5 py-3.5 border-t border-ivory-300 bg-white flex flex-wrap items-center justify-between gap-2 shrink-0">
+        <label class="inline-flex items-center gap-2 cursor-pointer select-none">
+          <input type="checkbox" id="includeTitleInExport" checked onchange="toggleIncludeTitle(this.checked)" class="w-4 h-4 rounded border-ivory-300 text-ink-800 focus:ring-ink-800 cursor-pointer" />
+          <span class="text-xs text-ink-600">최상단에 시트 제목 포함</span>
+        </label>
+
+        <div class="flex items-center gap-2">
+          <button onclick="copyCompiledPrompt()" class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold border border-ivory-300 bg-ivory-50 hover:bg-ivory-200/70 text-ink-900 transition">
+            <i data-lucide="clipboard-copy" class="w-3.5 h-3.5 text-ink-600"></i>
+            <span>전체 복사</span>
+          </button>
+          <button onclick="downloadTxtFile()" class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold bg-ink-800 hover:bg-ink-900 text-white transition shadow-xs">
+            <i data-lucide="download" class="w-3.5 h-3.5"></i>
+            <span>TXT 파일로 다운로드</span>
+          </button>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- 삭제 확인 커스텀 모달 -->
+  <div id="confirmModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-ink-900/35 backdrop-blur-xs p-4">
+    <div class="bg-white border border-ivory-300 rounded-2xl max-w-sm w-full p-5 shadow-xl space-y-4">
+      <div class="flex items-start gap-3">
+        <div class="w-9 h-9 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center shrink-0">
+          <i data-lucide="alert-circle" class="w-5 h-5"></i>
+        </div>
+        <div>
+          <h3 id="modalTitle" class="font-bold text-sm text-ink-900">삭제 확인</h3>
+          <p id="modalMessage" class="text-xs text-ink-500 mt-1 leading-relaxed">정말로 삭제하시겠습니까?</p>
+        </div>
+      </div>
+      <div class="flex justify-end gap-2 pt-1">
+        <button onclick="closeConfirmModal()" class="px-3.5 py-2 rounded-xl text-xs font-medium text-ink-600 bg-ivory-100 hover:bg-ivory-200 transition">취소</button>
+        <button id="modalConfirmBtn" class="px-3.5 py-2 rounded-xl text-xs font-semibold text-white bg-rose-600 hover:bg-rose-700 transition">삭제하기</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 토스트 알림 컨테이너 -->
+  <div id="toastContainer" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+  <script>
+    // =========================================================================
+    // 1. 초기 상태 및 기본 프리셋 정의
+    // =========================================================================
+    const STORAGE_KEY = 'ai_chat_studio_ivory_v2';
+
+    const DEFAULT_PRESET_FIELDS = [
+      { id: 'f_name', label: '이름 (Name)', checked: true, collapsed: false, placeholder: '캐릭터의 이름, 나이, 성별, 직업 등을 입력하세요.\n예: 이름: 서윤아 / 나이: 24세 / 직업: 심야 책방 주인', content: '' },
+      { id: 'f_appearance', label: '외모 (Appearance)', checked: true, collapsed: false, placeholder: '머리색, 눈동자, 체형, 복장 스타일, 특징적인 소품을 묘사하세요.', content: '' },
+      { id: 'f_personality', label: '성격 (Personality)', checked: true, collapsed: false, placeholder: '겉으로 드러나는 성격과 내면의 반전 매력, 가치관을 입력하세요.', content: '' },
+      { id: 'f_speech', label: '말투 및 습관 (Speech Style)', checked: true, collapsed: false, placeholder: '존댓말/반말 여부, 자주 쓰는 어미, 말버릇, 행동 묘사 방식을 적으세요.', content: '' },
+      { id: 'f_background', label: '배경 설정 (Background)', checked: false, collapsed: false, placeholder: '캐릭터의 과거사, 현재 처한 상황, 유저와의 관계 등을 입력하세요.', content: '' },
+      { id: 'f_worldview', label: '세계관 (Worldview)', checked: false, collapsed: false, placeholder: '이야기가 펼쳐지는 시대적·공간적 배경과 세계의 규칙을 설명하세요.', content: '' },
+      { id: 'f_greeting', label: '첫 인사말 (First Message)', checked: true, collapsed: false, placeholder: '대화가 시작될 때 캐릭터가 건네는 첫 대사와 상황 지문을 작성하세요.', content: '' },
+      { id: 'f_system', label: '시스템 지침 (System Prompt)', checked: false, collapsed: false, placeholder: 'AI가 반드시 지켜야 할 롤플레잉 규칙, 출력 형식, 금지 사항 등을 입력하세요.', content: '' },
+      { id: 'f_example', label: '대화 예시 (Example Dialogue)', checked: false, collapsed: false, placeholder: '{{user}}: 안녕하세요.\n{{char}}: 어서 오세요, 오늘도 늦은 밤에 찾아오셨네요.', content: '' }
+    ];
+
+    function createSampleProject(title = '새 캐릭터 시트 #1', withSampleText = false) {
+      const fields = JSON.parse(JSON.stringify(DEFAULT_PRESET_FIELDS));
+      if (withSampleText) {
+        fields[0].content = '이름: 강해린 (Kang Haerin)\n나이: 26세\n직업: 심야 앤티크 카페 바리스타 겸 정보상';
+        fields[1].content = '허리까지 내려오는 차분한 흑발에 맑은 회색 눈동자. 평소에는 린넨 셔츠와 검은 앞치마 차림이며, 왼쪽 손목에 낡은 은시계를 차고 있다.';
+        fields[2].content = '무심하고 현실적인 태도를 유지하지만, 자신이 인정한 사람에게는 은근히 세심하게 챙겨주는 다정함이 있다.';
+        fields[3].content = '나른하고 낮은 톤의 반존대를 섞어 쓴다. 대화 중 커피잔을 닦거나 창밖을 바라보는 지문을 자주 활용한다.';
+        fields[6].content = '*딸랑— 빗소리를 뚫고 카페 문이 열리자, 카운터 안쪽에서 잔을 닦던 해린이 천천히 고개를 든다.*\n\n"이 시간에 손님이라니 드문 일이네. 비에 젖었잖아. 일단 앉아, 따뜻한 걸로 내줄 테니까."';
+      }
+      return {
+        id: 'proj_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
+        title: title,
+        updatedAt: Date.now(),
+        fields: fields
+      };
+    }
+
+    let appState = {
+      outputFormat: 'bracket',
+      includeTitleInExport: true,
+      checklistCollapsed: false,
+      activeProjectId: null,
+      projects: []
+    };
+
+    // 드래그 상태 관리 (1번 영역 & 2번 영역 공용)
+    let draggedGlobalIndex = null;
+
+    // =========================================================================
+    // 2. 로컬 스토리지 저장 및 로드
+    // =========================================================================
+    function loadState() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (parsed && Array.isArray(parsed.projects) && parsed.projects.length > 0) {
+            appState = { ...appState, ...parsed };
+            if (!appState.projects.some(p => p.id === appState.activeProjectId)) {
+              appState.activeProjectId = appState.projects[0].id;
+            }
+            return;
+          }
+        }
+      } catch (e) {
+        console.error('로컬 스토리지 로드 오류:', e);
+      }
+      const initialProj = createSampleProject('심야 카페의 정보상', true);
+      appState.projects = [initialProj];
+      appState.activeProjectId = initialProj.id;
+      saveState();
+    }
+
+    let saveTimeout = null;
+    function saveState() {
+      try {
+        const activeProj = getActiveProject();
+        if (activeProj) {
+          activeProj.updatedAt = Date.now();
+        }
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(appState));
+
+        const badge = document.getElementById('saveStatusBadge');
+        if (badge) {
+          badge.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span> 저장 중...`;
+          clearTimeout(saveTimeout);
+          saveTimeout = setTimeout(() => {
+            badge.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-emerald-600"></span> 자동 저장됨`;
+          }, 400);
+        }
+      } catch (e) {
+        console.error('로컬 스토리지 저장 오류:', e);
+        showToast('저장 공간이 부족하여 자동 저장에 실패했습니다.', 'error');
+      }
+    }
+
+    function getActiveProject() {
+      return appState.projects.find(p => p.id === appState.activeProjectId) || appState.projects[0];
+    }
+
+    // =========================================================================
+    // 3. UI 접기/펼치기 상태
+    // =========================================================================
+    function toggleChecklistCollapse() {
+      appState.checklistCollapsed = !appState.checklistCollapsed;
+      renderChecklistVisibility();
+      saveState();
+    }
+
+    function renderChecklistVisibility() {
+      const body = document.getElementById('checklistBody');
+      const text = document.getElementById('collapseChecklistText');
+      const icon = document.getElementById('collapseChecklistIcon');
+      if (appState.checklistCollapsed) {
+        body.classList.add('hidden');
+        text.textContent = '펼치기';
+        icon.style.transform = 'rotate(180deg)';
+      } else {
+        body.classList.remove('hidden');
+        text.textContent = '접기';
+        icon.style.transform = 'rotate(0deg)';
+      }
+    }
+
+    // =========================================================================
+    // 4. 멀티 탭 / 게시글 시트 CRUD
+    // =========================================================================
+    function renderProjectTabs() {
+      const container = document.getElementById('projectTabsContainer');
+      container.innerHTML = '';
+
+      appState.projects.forEach(proj => {
+        const isActive = proj.id === appState.activeProjectId;
+        const btn = document.createElement('button');
+        btn.onclick = () => switchProject(proj.id);
+        btn.className = isActive
+          ? 'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-ink-800 text-white shadow-2xs shrink-0 transition'
+          : 'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-white text-ink-600 hover:bg-ivory-200/70 border border-ivory-300 shrink-0 transition';
+
+        const activeCount = proj.fields.filter(f => f.checked).length;
+        btn.innerHTML = `
+          <i data-lucide="file-text" class="w-3.5 h-3.5 ${isActive ? 'text-ivory-200' : 'text-ink-400'}"></i>
+          <span class="max-w-[140px] truncate">${escapeHtml(proj.title || '제목 없음')}</span>
+          <span class="text-[10px] px-1.5 py-0.2 rounded-full ${isActive ? 'bg-white/15 text-white' : 'bg-ivory-100 text-ink-500'}">${activeCount}</span>
+        `;
+        container.appendChild(btn);
+      });
+
+      lucide.createIcons();
+    }
+
+    function switchProject(projectId) {
+      appState.activeProjectId = projectId;
+      saveState();
+      renderAll();
+    }
+
+    function createNewProject() {
+      const nextNum = appState.projects.length + 1;
+      const newProj = createSampleProject(`새 시트 #${nextNum}`, false);
+      appState.projects.push(newProj);
+      appState.activeProjectId = newProj.id;
+      saveState();
+      renderAll();
+      showToast('새 시트가 추가되었습니다.');
+    }
+
+    function renameActiveProject(newTitle) {
+      const proj = getActiveProject();
+      if (!proj) return;
+      const trimmed = newTitle.trim();
+      proj.title = trimmed || '제목 없는 시트';
+      saveState();
+      renderProjectTabs();
+      renderPreview();
+    }
+
+    function duplicateActiveProject() {
+      const current = getActiveProject();
+      if (!current) return;
+      const copy = JSON.parse(JSON.stringify(current));
+      copy.id = 'proj_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6);
+      copy.title = `${current.title} (복사본)`;
+      copy.updatedAt = Date.now();
+      appState.projects.push(copy);
+      appState.activeProjectId = copy.id;
+      saveState();
+      renderAll();
+      showToast('현재 시트가 복제되었습니다.');
+    }
+
+    function openDeleteProjectModal() {
+      if (appState.projects.length <= 1) {
+        showToast('최소 1개의 시트는 유지해야 합니다.', 'error');
+        return;
+      }
+      const proj = getActiveProject();
+      openConfirmModal(
+        '시트 삭제',
+        `"${proj.title}" 시트를 삭제하시겠습니까? 작성한 내용이 모두 삭제됩니다.`,
+        () => {
+          appState.projects = appState.projects.filter(p => p.id !== proj.id);
+          appState.activeProjectId = appState.projects[0].id;
+          saveState();
+          renderAll();
+          showToast('시트가 삭제되었습니다.');
+        }
+      );
+    }
+
+    // =========================================================================
+    // 5. 1번 영역: 항목 체크리스트 & 순서 변경
+    // =========================================================================
+    function renderFieldChecklist() {
+      const proj = getActiveProject();
+      const container = document.getElementById('fieldChecklistContainer');
+      const countBadge = document.getElementById('checkedCountBadge');
+      container.innerHTML = '';
+
+      const checkedCount = proj.fields.filter(f => f.checked).length;
+      countBadge.textContent = `${checkedCount}개 선택`;
+
+      proj.fields.forEach((field, index) => {
+        const item = document.createElement('div');
+        item.draggable = true;
+        item.dataset.globalIndex = index;
+
+        item.className = `group flex items-center justify-between gap-1.5 px-2.5 py-2 rounded-xl border transition select-none ${
+          field.checked
+            ? 'bg-ivory-200/75 border-ink-800/35 text-ink-900 shadow-2xs'
+            : 'bg-ivory-50 border-ivory-300 text-ink-500 hover:bg-white hover:border-ink-400/50'
+        }`;
+
+        // 1번 영역 드래그 이벤트
+        item.addEventListener('dragstart', (e) => {
+          draggedGlobalIndex = index;
+          item.classList.add('dragging-item');
+          e.dataTransfer.effectAllowed = 'move';
+        });
+        item.addEventListener('dragend', () => {
+          item.classList.remove('dragging-item');
+          document.querySelectorAll('#fieldChecklistContainer > div').forEach(el => el.classList.remove('drag-over-top'));
+        });
+        item.addEventListener('dragover', (e) => {
+          e.preventDefault();
+          item.classList.add('drag-over-top');
+        });
+        item.addEventListener('dragleave', () => {
+          item.classList.remove('drag-over-top');
+        });
+        item.addEventListener('drop', (e) => {
+          e.preventDefault();
+          item.classList.remove('drag-over-top');
+          if (draggedGlobalIndex !== null && draggedGlobalIndex !== index) {
+            moveField(draggedGlobalIndex, index);
+          }
+          draggedGlobalIndex = null;
+        });
+
+        item.innerHTML = `
+          <div class="flex items-center gap-2 min-w-0 flex-1">
+            <span class="cursor-grab active:cursor-grabbing text-ink-400 hover:text-ink-800 shrink-0" title="드래그하여 순서 변경">
+              <i data-lucide="grip-vertical" class="w-3.5 h-3.5"></i>
+            </span>
+            <label class="flex items-center gap-2 cursor-pointer min-w-0 flex-1">
+              <input
+                type="checkbox"
+                ${field.checked ? 'checked' : ''}
+                onchange="toggleFieldCheck('${field.id}', this.checked)"
+                class="w-4 h-4 rounded border-ivory-300 text-ink-800 focus:ring-ink-800 shrink-0 cursor-pointer accent-ink-800"
+              />
+              <span class="text-xs font-medium truncate">${escapeHtml(field.label)}</span>
+            </label>
+          </div>
+
+          <div class="flex items-center gap-0.5 shrink-0 opacity-75 group-hover:opacity-100">
+            <button type="button" onclick="moveField(${index}, ${index - 1})" ${index === 0 ? 'disabled' : ''} title="위로 이동" class="p-1 rounded hover:bg-ivory-200 disabled:opacity-25 text-ink-600">
+              <i data-lucide="arrow-up" class="w-3 h-3"></i>
+            </button>
+            <button type="button" onclick="moveField(${index}, ${index + 1})" ${index === proj.fields.length - 1 ? 'disabled' : ''} title="아래로 이동" class="p-1 rounded hover:bg-ivory-200 disabled:opacity-25 text-ink-600">
+              <i data-lucide="arrow-down" class="w-3 h-3"></i>
+            </button>
+            <button type="button" onclick="deleteFieldItem('${field.id}')" title="목록에서 삭제" class="p-1 rounded text-ink-400 hover:text-rose-600 hover:bg-rose-50">
+              <i data-lucide="x" class="w-3 h-3"></i>
+            </button>
+          </div>
+        `;
+        container.appendChild(item);
+      });
+    }
+
+    function toggleFieldCheck(fieldId, isChecked) {
+      const proj = getActiveProject();
+      const field = proj.fields.find(f => f.id === fieldId);
+      if (field) {
+        field.checked = isChecked;
+        saveState();
+        renderAll();
+      }
+    }
+
+    function handleAddCustomField(event) {
+      event.preventDefault();
+      const input = document.getElementById('newFieldNameInput');
+      const label = input.value.trim();
+      if (!label) {
+        showToast('추가할 항목 이름을 입력해주세요.', 'error');
+        return;
+      }
+
+      const proj = getActiveProject();
+      const newField = {
+        id: 'f_' + Date.now() + '_' + Math.random().toString(36).substring(2, 5),
+        label: label,
+        checked: true,
+        collapsed: false,
+        placeholder: `${label}에 대한 상세 내용을 자유롭게 입력하세요...`,
+        content: ''
+      };
+
+      proj.fields.push(newField);
+      input.value = '';
+      saveState();
+      renderAll();
+      showToast(`"${label}" 항목이 추가되었습니다.`);
+
+      setTimeout(() => {
+        const newTextarea = document.getElementById(`textarea_${newField.id}`);
+        if (newTextarea) newTextarea.focus();
+      }, 60);
+    }
+
+    function moveField(fromGlobalIndex, toGlobalIndex) {
+      const proj = getActiveProject();
+      if (toGlobalIndex < 0 || toGlobalIndex >= proj.fields.length) return;
+      const [moved] = proj.fields.splice(fromGlobalIndex, 1);
+      proj.fields.splice(toGlobalIndex, 0, moved);
+      saveState();
+      renderAll();
+    }
+
+    function deleteFieldItem(fieldId) {
+      const proj = getActiveProject();
+      const field = proj.fields.find(f => f.id === fieldId);
+      if (!field) return;
+
+      if (field.content && field.content.trim().length > 0) {
+        openConfirmModal(
+          '항목 삭제',
+          `"${field.label}" 항목에 작성된 내용이 있습니다. 정말 삭제하시겠습니까?`,
+          () => {
+            proj.fields = proj.fields.filter(f => f.id !== fieldId);
+            saveState();
+            renderAll();
+            showToast('항목이 삭제되었습니다.');
+          }
+        );
+      } else {
+        proj.fields = proj.fields.filter(f => f.id !== fieldId);
+        saveState();
+        renderAll();
+      }
+    }
+
+    // =========================================================================
+    // 6. 2번 영역: 선택된 항목 입력 카드 (드래그 앤 드롭 & 화살표 순서 변경 지원)
+    // =========================================================================
+    function renderActiveEditors() {
+      const proj = getActiveProject();
+      const container = document.getElementById('activeEditorsContainer');
+      container.innerHTML = '';
+
+      // 전체 인덱스 정보와 함께 체크된 항목만 필터링
+      const activeEntries = proj.fields
+        .map((field, globalIndex) => ({ field, globalIndex }))
+        .filter(entry => entry.field.checked);
+
+      if (activeEntries.length === 0) {
+        container.innerHTML = `
+          <div class="rounded-2xl border border-dashed border-ivory-300 p-10 text-center space-y-2 bg-white">
+            <div class="w-10 h-10 rounded-full bg-ivory-100 text-ink-400 mx-auto flex items-center justify-center">
+              <i data-lucide="check-square" class="w-5 h-5"></i>
+            </div>
+            <p class="text-sm font-medium text-ink-800">선택된 항목이 없습니다</p>
+            <p class="text-xs text-ink-500">위 1번 영역에서 원하는 항목을 체크하거나 새 항목을 추가해보세요.</p>
+          </div>
+        `;
+        return;
+      }
+
+      activeEntries.forEach(({ field, globalIndex }, activeIdx) => {
+        const card = document.createElement('div');
+        card.dataset.globalIndex = globalIndex;
+        card.className = 'bg-white rounded-2xl border border-ivory-300 shadow-card hover:border-ink-400/70 transition overflow-hidden';
+
+        // 2번 영역 카드 드래그 앤 드롭 이벤트 (헤더 핸들에서만 드래그 시작되도록 제어)
+        card.addEventListener('dragstart', (e) => {
+          // textarea 내부 텍스트 드래그와 충돌 방지
+          if (e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT') {
+            e.preventDefault();
+            return;
+          }
+          draggedGlobalIndex = globalIndex;
+          card.classList.add('dragging-item');
+          e.dataTransfer.effectAllowed = 'move';
+        });
+
+        card.addEventListener('dragend', () => {
+          card.classList.remove('dragging-item');
+          card.draggable = false;
+          document.querySelectorAll('#activeEditorsContainer > div').forEach(el => el.classList.remove('drag-over-card'));
+        });
+
+        card.addEventListener('dragover', (e) => {
+          e.preventDefault();
+          if (draggedGlobalIndex !== null && draggedGlobalIndex !== globalIndex) {
+            card.classList.add('drag-over-card');
+          }
+        });
+
+        card.addEventListener('dragleave', () => {
+          card.classList.remove('drag-over-card');
+        });
+
+        card.addEventListener('drop', (e) => {
+          e.preventDefault();
+          card.classList.remove('drag-over-card');
+          if (draggedGlobalIndex !== null && draggedGlobalIndex !== globalIndex) {
+            moveField(draggedGlobalIndex, globalIndex);
+            showToast('항목 순서가 변경되었습니다.');
+          }
+          draggedGlobalIndex = null;
+        });
+
+        const isCollapsed = !!field.collapsed;
+
+        card.innerHTML = `
+          <!-- 카드 헤더 (드래그 핸들 + 번호 + 제목 인라인 수정 + 순서/접기/해제 버튼) -->
+          <div class="px-3.5 py-2.5 bg-ivory-100/70 border-b ${isCollapsed ? 'border-transparent' : 'border-ivory-300'} flex items-center justify-between gap-2">
+            <div class="flex items-center gap-2 flex-1 min-w-0">
+              <!-- 드래그 핸들: 마우스 다운 시 카드 draggable 활성화 -->
+              <span
+                onmousedown="this.closest('[data-global-index]').draggable = true"
+                onmouseup="this.closest('[data-global-index]').draggable = false"
+                title="드래그하여 순서 변경"
+                class="cursor-grab active:cursor-grabbing p-1 -ml-1 rounded text-ink-400 hover:text-ink-900 hover:bg-ivory-200/80 shrink-0 transition"
+              >
+                <i data-lucide="grip-vertical" class="w-4 h-4"></i>
+              </span>
+
+              <span class="text-[11px] font-mono font-bold px-1.5 py-0.5 rounded bg-ink-800 text-white shrink-0">${activeIdx + 1}</span>
+
+              <input
+                type="text"
+                value="${escapeAttr(field.label)}"
+                onchange="updateFieldLabel('${field.id}', this.value)"
+                title="클릭하여 항목 제목 수정"
+                class="font-semibold text-xs sm:text-sm bg-transparent text-ink-900 focus:outline-none focus:bg-white focus:ring-2 focus:ring-ink-800/15 rounded-lg px-2 py-0.5 w-full transition"
+              />
+            </div>
+
+            <!-- 카드 우측 액션 버튼 그룹 -->
+            <div class="flex items-center gap-0.5 shrink-0">
+              <!-- 위로 순서 이동 -->
+              <button
+                type="button"
+                onclick="moveActiveFieldStep('${field.id}', -1)"
+                ${activeIdx === 0 ? 'disabled' : ''}
+                title="순서 위로 이동"
+                class="p-1.5 rounded-lg text-ink-600 hover:bg-ivory-200 disabled:opacity-25 transition"
+              >
+                <i data-lucide="arrow-up" class="w-3.5 h-3.5"></i>
+              </button>
+
+              <!-- 아래로 순서 이동 -->
+              <button
+                type="button"
+                onclick="moveActiveFieldStep('${field.id}', 1)"
+                ${activeIdx === activeEntries.length - 1 ? 'disabled' : ''}
+                title="순서 아래로 이동"
+                class="p-1.5 rounded-lg text-ink-600 hover:bg-ivory-200 disabled:opacity-25 transition"
+              >
+                <i data-lucide="arrow-down" class="w-3.5 h-3.5"></i>
+              </button>
+
+              <div class="h-3.5 w-px bg-ivory-300 mx-1"></div>
+
+              <!-- 내용 비우기 -->
+              <button
+                type="button"
+                onclick="clearFieldContent('${field.id}')"
+                title="작성 내용 지우기"
+                class="p-1.5 rounded-lg text-ink-500 hover:text-ink-900 hover:bg-ivory-200 transition"
+              >
+                <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>
+              </button>
+
+              <!-- 카드 접기/펼치기 -->
+              <button
+                type="button"
+                onclick="toggleCardCollapse('${field.id}')"
+                title="${isCollapsed ? '입력창 펼치기' : '입력창 접기'}"
+                class="p-1.5 rounded-lg text-ink-500 hover:text-ink-900 hover:bg-ivory-200 transition"
+              >
+                <i data-lucide="${isCollapsed ? 'chevron-down' : 'chevron-up'}" class="w-3.5 h-3.5"></i>
+              </button>
+
+              <!-- 체크 해제 -->
+              <button
+                type="button"
+                onclick="toggleFieldCheck('${field.id}', false)"
+                title="선택 해제 (내용은 보존됨)"
+                class="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-medium text-ink-500 hover:text-rose-600 hover:bg-rose-50 transition ml-0.5"
+              >
+                <i data-lucide="eye-off" class="w-3 h-3"></i>
+                <span class="hidden sm:inline">해제</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- 텍스트 입력 본문 -->
+          <div class="p-3.5 ${isCollapsed ? 'hidden' : ''}">
+            <textarea
+              id="textarea_${field.id}"
+              oninput="updateFieldContent('${field.id}', this.value)"
+              placeholder="${escapeAttr(field.placeholder || '내용을 입력하세요...')}"
+              class="w-full text-sm leading-relaxed bg-transparent text-ink-900 placeholder-ink-400 focus:outline-none resize-y"
+            >${escapeHtml(field.content)}</textarea>
+          </div>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    function updateFieldLabel(fieldId, newLabel) {
+      const proj = getActiveProject();
+      const field = proj.fields.find(f => f.id === fieldId);
+      if (field) {
+        field.label = newLabel.trim() || '이름 없는 항목';
+        saveState();
+        renderFieldChecklist();
+        renderPreview();
+        lucide.createIcons();
+      }
+    }
+
+    function updateFieldContent(fieldId, newContent) {
+      const proj = getActiveProject();
+      const field = proj.fields.find(f => f.id === fieldId);
+      if (field) {
+        field.content = newContent;
+        saveState();
+        renderPreview();
+      }
+    }
+
+    function clearFieldContent(fieldId) {
+      const proj = getActiveProject();
+      const field = proj.fields.find(f => f.id === fieldId);
+      if (field && field.content) {
+        field.content = '';
+        saveState();
+        renderActiveEditors();
+        renderPreview();
+        lucide.createIcons();
+        showToast(`"${field.label}" 내용이 초기화되었습니다.`);
+      }
+    }
+
+    function toggleCardCollapse(fieldId) {
+      const proj = getActiveProject();
+      const field = proj.fields.find(f => f.id === fieldId);
+      if (field) {
+        field.collapsed = !field.collapsed;
+        saveState();
+        renderActiveEditors();
+        lucide.createIcons();
+      }
+    }
+
+    // 2번 영역에서 인접한 체크 항목끼리 순서 교환 (1번 영역 순서도 자동 동기화)
+    function moveActiveFieldStep(fieldId, direction) {
+      const proj = getActiveProject();
+      const currentIdx = proj.fields.findIndex(f => f.id === fieldId);
+      if (currentIdx === -1) return;
+
+      if (direction < 0) {
+        for (let i = currentIdx - 1; i >= 0; i--) {
+          if (proj.fields[i].checked) {
+            moveField(currentIdx, i);
+            break;
+          }
+        }
+      } else {
+        for (let i = currentIdx + 1; i < proj.fields.length; i++) {
+          if (proj.fields[i].checked) {
+            moveField(currentIdx, i);
+            break;
+          }
+        }
+      }
+    }
+
+    // =========================================================================
+    // 7. 오른쪽 패널: 실시간 조립 미리보기 및 토큰 계산
+    // =========================================================================
+    function changeOutputFormat(format) {
+      appState.outputFormat = format;
+      saveState();
+      renderPreview();
+    }
+
+    function toggleIncludeTitle(checked) {
+      appState.includeTitleInExport = checked;
+      saveState();
+      renderPreview();
+    }
+
+    function buildCompiledText() {
+      const proj = getActiveProject();
+      if (!proj) return '';
+
+      const activeFields = proj.fields.filter(f => f.checked);
+      const blocks = [];
+
+      if (appState.includeTitleInExport && proj.title) {
+        if (appState.outputFormat === 'markdown') {
+          blocks.push(`# ${proj.title}`);
+        } else if (appState.outputFormat === 'xml') {
+          blocks.push(`<!-- ${proj.title} -->`);
+        } else {
+          blocks.push(`=== ${proj.title} ===`);
+        }
+      }
+
+      activeFields.forEach(field => {
+        const cleanLabel = field.label.trim();
+        const body = (field.content || '').trim();
+        if (!body) return;
+
+        switch (appState.outputFormat) {
+          case 'markdown':
+            blocks.push(`### ${cleanLabel}\n${body}`);
+            break;
+          case 'xml': {
+            const tag = cleanLabel.replace(/[^a-zA-Z0-9가-힣_]/g, '_') || 'item';
+            blocks.push(`<${tag}>\n${body}\n</${tag}>`);
+            break;
+          }
+          case 'colon':
+            blocks.push(`${cleanLabel}: ${body}`);
+            break;
+          case 'bracket':
+          default:
+            blocks.push(`[${cleanLabel}]\n${body}`);
+            break;
+        }
+      });
+
+      return blocks.join('\n\n');
+    }
+
+    function estimateTokens(text) {
+      if (!text) return 0;
+      let tokens = 0;
+      for (let i = 0; i < text.length; i++) {
+        const code = text.charCodeAt(i);
+        if (code >= 0xAC00 && code <= 0xD7A3) {
+          tokens += 0.65;
+        } else if (code <= 0x007F) {
+          tokens += 0.28;
+        } else {
+          tokens += 0.6;
+        }
+      }
+      return Math.ceil(tokens);
+    }
+
+    function renderPreview() {
+      const compiled = buildCompiledText();
+      const previewBox = document.getElementById('previewOutputBox');
+
+      if (!compiled) {
+        previewBox.innerHTML = `<span class="text-ink-400 italic">왼쪽에서 항목을 체크하고 내용을 입력하면 이곳에 프롬프트가 실시간으로 조립됩니다.</span>`;
+      } else {
+        previewBox.textContent = compiled;
+      }
+
+      const withSpace = compiled.length;
+      const noSpace = compiled.replace(/\s/g, '').length;
+      const tokens = estimateTokens(compiled);
+
+      document.getElementById('charCountWithSpace').textContent = withSpace.toLocaleString();
+      document.getElementById('charCountNoSpace').textContent = noSpace.toLocaleString();
+      document.getElementById('estimatedTokens').textContent = tokens.toLocaleString();
+    }
+
+    // =========================================================================
+    // 8. 복사, TXT 다운로드 및 JSON 백업/복원
+    // =========================================================================
+    function copyCompiledPrompt() {
+      const text = buildCompiledText();
+      if (!text) {
+        showToast('복사할 내용이 없습니다. 먼저 내용을 입력해주세요.', 'error');
+        return;
+      }
+
+      const tempTextarea = document.createElement('textarea');
+      tempTextarea.value = text;
+      tempTextarea.style.position = 'fixed';
+      tempTextarea.style.left = '-9999px';
+      document.body.appendChild(tempTextarea);
+      tempTextarea.select();
+
+      try {
+        const success = document.execCommand('copy');
+        if (success) {
+          showToast('클립보드에 전체 내용이 복사되었습니다.');
+        } else if (navigator.clipboard) {
+          navigator.clipboard.writeText(text);
+          showToast('클립보드에 전체 내용이 복사되었습니다.');
+        }
+      } catch (err) {
+        showToast('복사 중 오류가 발생했습니다.', 'error');
+      } finally {
+        document.body.removeChild(tempTextarea);
+      }
+    }
+
+    function downloadTxtFile() {
+      const text = buildCompiledText();
+      if (!text) {
+        showToast('다운로드할 내용이 없습니다. 먼저 내용을 입력해주세요.', 'error');
+        return;
+      }
+
+      const proj = getActiveProject();
+      const safeTitle = (proj.title || '시트').replace(/[\\/:*?"<>|]/g, '_');
+      const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `[제작]_${safeTitle}.txt`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      showToast(`"[제작]_${safeTitle}.txt" 파일이 다운로드되었습니다.`);
+    }
+
+    function exportAllJSON() {
+      const dataStr = JSON.stringify(appState, null, 2);
+      const blob = new Blob([dataStr], { type: 'application/json;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const dateStr = new Date().toISOString().slice(0, 10);
+
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `제작_전체백업_${dateStr}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      showToast('전체 시트가 JSON 파일로 백업되었습니다.');
+    }
+
+    function importAllJSON(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function (e) {
+        try {
+          const parsed = JSON.parse(e.target.result);
+          if (!parsed || !Array.isArray(parsed.projects) || parsed.projects.length === 0) {
+            throw new Error('올바른 백업 파일 형식이 아닙니다.');
+          }
+          appState = { ...appState, ...parsed };
+          if (!appState.projects.some(p => p.id === appState.activeProjectId)) {
+            appState.activeProjectId = appState.projects[0].id;
+          }
+          saveState();
+          renderAll();
+          showToast(`${appState.projects.length}개의 시트가 복원되었습니다.`);
+        } catch (err) {
+          showToast('백업 복원 실패: 올바른 JSON 파일인지 확인하세요.', 'error');
+        } finally {
+          event.target.value = '';
+        }
+      };
+      reader.readAsText(file);
+    }
+
+    // =========================================================================
+    // 9. 모달, 토스트, 유틸리티 함수
+    // =========================================================================
+    function openConfirmModal(title, message, onConfirm) {
+      const modal = document.getElementById('confirmModal');
+      document.getElementById('modalTitle').textContent = title;
+      document.getElementById('modalMessage').textContent = message;
+
+      const confirmBtn = document.getElementById('modalConfirmBtn');
+      confirmBtn.onclick = () => {
+        closeConfirmModal();
+        onConfirm();
+      };
+
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    }
+
+    function closeConfirmModal() {
+      const modal = document.getElementById('confirmModal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    }
+
+    function showToast(message, type = 'success') {
+      const container = document.getElementById('toastContainer');
+      const toast = document.createElement('div');
+      const isError = type === 'error';
+
+      toast.className = `toast-enter pointer-events-auto flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-medium shadow-lg border ${
+        isError
+          ? 'bg-rose-600 text-white border-rose-500'
+          : 'bg-ink-800 text-white border-ink-900'
+      }`;
+
+      toast.innerHTML = `
+        <i data-lucide="${isError ? 'alert-circle' : 'check'}" class="w-4 h-4 ${isError ? 'text-white' : 'text-emerald-400'} shrink-0"></i>
+        <span>${escapeHtml(message)}</span>
+      `;
+
+      container.appendChild(toast);
+      lucide.createIcons();
+
+      setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateY(8px)';
+        toast.style.transition = 'all 0.2s ease';
+        setTimeout(() => toast.remove(), 220);
+      }, 2500);
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    function escapeAttr(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/"/g, '&quot;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+    }
+
+    // =========================================================================
+    // 10. 전체 렌더링 및 초기화
+    // =========================================================================
+    function renderAll() {
+      const proj = getActiveProject();
+      if (!proj) return;
+
+      document.getElementById('activeProjectTitleInput').value = proj.title || '';
+      document.getElementById('outputFormatSelect').value = appState.outputFormat || 'bracket';
+      document.getElementById('includeTitleInExport').checked = appState.includeTitleInExport !== false;
+
+      renderChecklistVisibility();
+      renderProjectTabs();
+      renderFieldChecklist();
+      renderActiveEditors();
+      renderPreview();
+
+      lucide.createIcons();
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      loadState();
+      renderAll();
+    });
+  </script>
+</body>
+</html>
